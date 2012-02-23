@@ -75,6 +75,7 @@ rnSrcDecls extra_deps group@(HsGroup { hs_valds   = val_decls,
                                        hs_derivds = deriv_decls,
                                        hs_fixds   = fix_decls,
                                        hs_warnds  = warn_decls,
+                                       hs_rwlocds = rwloc_decls,
                                        hs_annds   = ann_decls,
                                        hs_fords   = foreign_decls,
                                        hs_defds   = default_decls,
@@ -113,7 +114,11 @@ rnSrcDecls extra_deps group@(HsGroup { hs_valds   = val_decls,
          val_avails  = map Avail val_binders  } ;
    (tcg_env, tcl_env) <- extendGlobalRdrEnvRn val_avails local_fix_env ;
    traceRn (ptext (sLit "Val binders") <+> (ppr val_binders)) ;
-   setEnvs (tcg_env, tcl_env) $ do {
+
+   -- Add REWRITE_WITH_LOCATION declarations to environment
+   rn_rwloc_decls <- setEnvs (tcg_env, tcl_env) (mapM rnRwLocDecl rwloc_decls);
+
+   setEnvs (tcg_env {tcg_rwlocs = rn_rwloc_decls}, tcl_env) $ do {
 
    --  Now everything is in scope, as the remaining renaming assumes.
 
@@ -170,6 +175,7 @@ rnSrcDecls extra_deps group@(HsGroup { hs_valds   = val_decls,
                              hs_warnds  = [], -- warns are returned in the tcg_env
                                              -- (see below) not in the HsGroup
                              hs_fords  = rn_foreign_decls,
+                             hs_rwlocds= [], -- include in the tcg_env, see above
                              hs_annds  = rn_ann_decls,
                              hs_defds  = rn_default_decls,
                              hs_ruleds = rn_rule_decls,
@@ -323,6 +329,17 @@ dupWarnDecl (L loc _) rdr_name
   = vcat [ptext (sLit "Multiple warning declarations for") <+> quotes (ppr rdr_name),
           ptext (sLit "also at ") <+> ppr loc]
 
+\end{code}
+
+%*********************************************************
+%*                                                      *
+\subsection{Rewrite with location declarations}
+%*                                                      *
+%*********************************************************
+
+\begin{code}
+rnRwLocDecl :: LRwLocDecl RdrName -> RnM (Name, Name)
+rnRwLocDecl (L _ (RewriteLoc name target)) = liftM2 (,) (lookupTopBndrRn name) (lookupOccRn target)
 \end{code}
 
 %*********************************************************
@@ -1409,6 +1426,8 @@ add gp@(HsGroup {hs_fords  = ts}) l (ForD d) ds
   = addl (gp { hs_fords = L l d : ts }) ds
 add gp@(HsGroup {hs_warnds  = ts})  l (WarningD d) ds
   = addl (gp { hs_warnds = L l d : ts }) ds
+add gp@(HsGroup {hs_rwlocds = ts}) l (RwLocD d) ds
+  = addl (gp { hs_rwlocds = L l d : ts }) ds
 add gp@(HsGroup {hs_annds  = ts}) l (AnnD d) ds
   = addl (gp { hs_annds = L l d : ts }) ds
 add gp@(HsGroup {hs_ruleds  = ts}) l (RuleD d) ds

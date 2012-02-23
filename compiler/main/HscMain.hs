@@ -1593,6 +1593,7 @@ mkModGuts mod safe binds =
         mg_binds        = binds,
         mg_foreign      = NoStubs,
         mg_warns        = NoWarnings,
+        mg_rwlocs       = [],
         mg_anns         = [],
         mg_hpc_info     = emptyHpcInfo False,
         mg_modBreaks    = emptyModBreaks,

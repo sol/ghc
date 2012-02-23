@@ -655,6 +655,8 @@ data ModIface
                 -- ^ Warnings
                 -- NOT STRICT!  we read this field lazily from the interface file
 
+        mi_rwlocs   :: [(Name, Name)],
+
         mi_anns     :: [IfaceAnnotation],
                 -- ^ Annotations
                 -- NOT STRICT!  we read this field lazily from the interface file
@@ -734,6 +736,7 @@ instance Binary ModIface where
                  mi_used_th   = used_th,
                  mi_fixities  = fixities,
                  mi_warns     = warns,
+                 mi_rwlocs    = rwlocs,
                  mi_anns      = anns,
                  mi_decls     = decls,
                  mi_insts     = insts,
@@ -758,6 +761,7 @@ instance Binary ModIface where
         put_ bh used_th
         put_ bh fixities
         lazyPut bh warns
+        lazyPut bh rwlocs
         lazyPut bh anns
         put_ bh decls
         put_ bh insts
@@ -784,6 +788,7 @@ instance Binary ModIface where
         used_th     <- get bh
         fixities    <- {-# SCC "bin_fixities" #-} get bh
         warns       <- {-# SCC "bin_warns" #-} lazyGet bh
+        rwlocs      <- {-# SCC "bin_rwlocs" #-} lazyGet bh
         anns        <- {-# SCC "bin_anns" #-} lazyGet bh
         decls       <- {-# SCC "bin_tycldecls" #-} get bh
         insts       <- {-# SCC "bin_insts" #-} get bh
@@ -807,6 +812,7 @@ instance Binary ModIface where
                  mi_exports     = exports,
                  mi_exp_hash    = exp_hash,
                  mi_used_th     = used_th,
+                 mi_rwlocs      = rwlocs,
                  mi_anns        = anns,
                  mi_fixities    = fixities,
                  mi_warns       = warns,
@@ -845,6 +851,7 @@ emptyModIface mod
                mi_used_th     = False,
                mi_fixities    = [],
                mi_warns       = NoWarnings,
+               mi_rwlocs      = [],
                mi_anns        = [],
                mi_insts       = [],
                mi_fam_insts   = [],
@@ -938,6 +945,7 @@ data ModGuts
         mg_binds     :: !CoreProgram,    -- ^ Bindings for this module
         mg_foreign   :: !ForeignStubs,   -- ^ Foreign exports declared in this module
         mg_warns     :: !Warnings,       -- ^ Warnings declared in the module
+        mg_rwlocs    :: [(Name, Name)],  -- ^ Rewrite with location pragmas declared in this module
         mg_anns      :: [Annotation],    -- ^ Annotations declared in this module
         mg_hpc_info  :: !HpcInfo,        -- ^ Coverage tick boxes in the module
         mg_modBreaks :: !ModBreaks,      -- ^ Breakpoints for the module

@@ -123,6 +123,7 @@ initTc hsc_env hsc_src keep_rn_syntax mod do_this
                 tcg_sigs           = emptyNameSet,
                 tcg_ev_binds       = emptyBag,
                 tcg_warns          = NoWarnings,
+                tcg_rwlocs         = [],
                 tcg_anns           = [],
                 tcg_tcs            = [],
                 tcg_insts          = [],

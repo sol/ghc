@@ -290,6 +290,7 @@ incorrect.
  '{-# WARNING'            { L _ ITwarning_prag }
  '{-# UNPACK'             { L _ ITunpack_prag }
  '{-# NOUNPACK'           { L _ ITnounpack_prag }
+ '{-# REWRITE_WITH_LOCATION' { L _ ITrewrite_with_location_prag }
  '{-# ANN'                { L _ ITann_prag }
  '{-# VECTORISE'          { L _ ITvect_prag }
  '{-# VECTORISE_SCALAR'   { L _ ITvect_scalar_prag }
@@ -619,6 +620,7 @@ topdecl :: { OrdList (LHsDecl RdrName) }
                                                 { unitOL $ LL $
                                                     VectD (HsVectTypeIn True $3 (Just $5)) }
         | '{-# VECTORISE' 'class' gtycon '#-}'  { unitOL $ LL $ VectD (HsVectClassIn $3) }
+        | rewrite_with_loc { unitOL $1 }
         | annotation { unitOL $1 }
         | decl                                  { unLoc $1 }
 
@@ -969,6 +971,12 @@ strings :: { Located [FastString] }
 stringlist :: { Located (OrdList FastString) }
     : stringlist ',' STRING { LL (unLoc $1 `snocOL` getSTRING $3) }
     | STRING                { LL (unitOL (getSTRING $1)) }
+
+-----------------------------------------------------------------------------
+-- Rewrite with location
+rewrite_with_loc :: { LHsDecl RdrName }
+    : '{-# REWRITE_WITH_LOCATION' name_var name_var '#-}'  { LL (RwLocD $ RewriteLoc (unLoc $2) (unLoc $3)) }
+
 
 -----------------------------------------------------------------------------
 -- Annotations

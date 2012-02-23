@@ -149,6 +149,7 @@ mkIface hsc_env maybe_old_fingerprint mod_details
                       mg_rdr_env      = rdr_env,
                       mg_fix_env      = fix_env,
                       mg_warns        = warns,
+                      mg_rwlocs       = rwlocs,
                       mg_hpc_info     = hpc_info,
                       mg_safe_haskell = safe_mode,
                       mg_trust_pkg    = self_trust,
@@ -156,7 +157,7 @@ mkIface hsc_env maybe_old_fingerprint mod_details
                     }
         = mkIface_ hsc_env maybe_old_fingerprint
                    this_mod is_boot used_names used_th deps rdr_env fix_env
-                   warns hpc_info dir_imp_mods self_trust dependent_files
+                   warns rwlocs hpc_info dir_imp_mods self_trust dependent_files
                    safe_mode mod_details
 
 -- | make an interface from the results of typechecking only.  Useful
@@ -175,6 +176,7 @@ mkIfaceTc hsc_env maybe_old_fingerprint safe_mode mod_details
                       tcg_rdr_env = rdr_env,
                       tcg_fix_env = fix_env,
                       tcg_warns = warns,
+                      tcg_rwlocs  = rwlocs,
                       tcg_hpc = other_hpc_info,
                       tcg_th_splice_used = tc_splice_used,
                       tcg_dependent_files = dependent_files
@@ -187,7 +189,7 @@ mkIfaceTc hsc_env maybe_old_fingerprint safe_mode mod_details
           dep_files <- (readIORef dependent_files)
           mkIface_ hsc_env maybe_old_fingerprint
                    this_mod (isHsBoot hsc_src) used_names used_th deps rdr_env
-                   fix_env warns hpc_info (imp_mods imports)
+                   fix_env warns rwlocs hpc_info (imp_mods imports)
                    (imp_trust_own_pkg imports) dep_files safe_mode mod_details
 
 
@@ -231,14 +233,14 @@ mkDependencies
 
 mkIface_ :: HscEnv -> Maybe Fingerprint -> Module -> IsBootInterface
          -> NameSet -> Bool -> Dependencies -> GlobalRdrEnv
-         -> NameEnv FixItem -> Warnings -> HpcInfo
+         -> NameEnv FixItem -> Warnings -> [(Name, Name)] -> HpcInfo
          -> ImportedMods -> Bool
          -> [FilePath]
          -> SafeHaskellMode
          -> ModDetails
          -> IO (Messages, Maybe (ModIface, Bool))
 mkIface_ hsc_env maybe_old_fingerprint
-         this_mod is_boot used_names used_th deps rdr_env fix_env src_warns
+         this_mod is_boot used_names used_th deps rdr_env fix_env src_warns rwlocs
          hpc_info dir_imp_mods pkg_trust_req dependent_files safe_mode
          ModDetails{  md_insts     = insts,
                       md_fam_insts = fam_insts,
@@ -291,6 +293,7 @@ mkIface_ hsc_env maybe_old_fingerprint
 
               mi_fixities    = fixities,
               mi_warns       = warns,
+              mi_rwlocs      = rwlocs,
               mi_anns        = mkIfaceAnnotations anns,
               mi_globals     = maybeGlobalRdrEnv rdr_env,
 

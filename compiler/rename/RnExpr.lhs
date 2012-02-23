@@ -34,6 +34,7 @@ import BasicTypes       ( FixityDirection(..) )
 import PrelNames
 
 import Module
+import HscTypes
 import Name
 import NameSet
 import RdrName
@@ -97,9 +98,29 @@ finishHsVar :: Name -> RnM (HsExpr Name, FreeVars)
 finishHsVar name
  = do { ignore_asserts <- goptM Opt_IgnoreAsserts
       ; if ignore_asserts || not (name `hasKey` assertIdKey)
-        then return (HsVar name, unitFV name)
+        then rewriteWithLocation name
         else do { e <- mkAssertErrorExpr
                 ; return (e, unitFV name) } }
+
+rewriteWithLocation :: Name -> RnM (HsExpr Name, FreeVars)
+rewriteWithLocation name = do
+  substitute <- getSubstitute
+  e <- maybe (return $ HsVar name) mkLocExpr substitute
+  return (e, unitFV name)
+  where
+    getSubstitute :: RnM (Maybe Name)
+    getSubstitute = do
+      x <- lookup name . tcg_rwlocs <$> getGblEnv
+      maybe fromHomePackageTable (return . Just) x
+      where
+        fromHomePackageTable = do
+          (eps, hpt) <- getEpsAndHpt
+          dflags <- getDynFlags
+          return $ lookupName dflags hpt (eps_PIT eps)
+
+        lookupName :: DynFlags -> HomePackageTable -> PackageIfaceTable -> Maybe Name
+        lookupName dflags hpt pit =
+          nameModule_maybe name >>= lookupIfaceByModule dflags hpt pit >>= lookup name . mi_rwlocs
 
 rnExpr (HsVar v)
   = do { mb_name <- lookupOccRn_maybe v
@@ -1238,6 +1259,16 @@ mkAssertErrorExpr
        dflags <- getDynFlags
        return (HsApp (L sloc (HsVar assertErrorName))
                      (L sloc (srcSpanPrimLit dflags sloc)))
+
+srcSpanLit :: DynFlags -> SrcSpan -> HsExpr Name
+srcSpanLit dflags span = HsLit (HsString (mkFastString (showSDocOneLine dflags (ppr span))))
+
+mkLocExpr :: Name -> RnM (HsExpr Name)
+-- Apply location information to given name
+mkLocExpr name = do
+  sloc <- getSrcSpanM
+  dflags <- getDynFlags
+  return (HsApp (L sloc (HsVar name)) (L sloc (srcSpanLit dflags sloc)))
 \end{code}
 
 Note [Adding the implicit parameter to 'assert']

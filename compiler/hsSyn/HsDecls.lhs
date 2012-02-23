@@ -54,6 +54,8 @@ module HsDecls (
   DocDecl(..), LDocDecl, docDeclDoc,
   -- ** Deprecations
   WarnDecl(..),  LWarnDecl,
+  -- ** Rewrite with location
+  RwLocDecl(..),  LRwLocDecl,
   -- ** Annotations
   AnnDecl(..), LAnnDecl, 
   AnnProvenance(..), annProvenanceName_maybe,
@@ -110,6 +112,7 @@ data HsDecl id
   | DefD        (DefaultDecl id)
   | ForD        (ForeignDecl id)
   | WarningD    (WarnDecl id)
+  | RwLocD      (RwLocDecl id)
   | AnnD        (AnnDecl id)
   | RuleD       (RuleDecl id)
   | VectD       (VectDecl id)
@@ -156,6 +159,7 @@ data HsGroup id
         hs_defds  :: [LDefaultDecl id],
         hs_fords  :: [LForeignDecl id],
         hs_warnds :: [LWarnDecl id],
+        hs_rwlocds:: [LRwLocDecl id],
         hs_annds  :: [LAnnDecl id],
         hs_ruleds :: [LRuleDecl id],
         hs_vects  :: [LVectDecl id],
@@ -169,7 +173,7 @@ emptyRnGroup  = emptyGroup { hs_valds = emptyValBindsOut }
 
 emptyGroup = HsGroup { hs_tyclds = [], hs_instds = [], 
                        hs_derivds = [],
-                       hs_fixds = [], hs_defds = [], hs_annds = [],
+                       hs_fixds = [], hs_defds = [], hs_rwlocds = [], hs_annds = [],
                        hs_fords = [], hs_warnds = [], hs_ruleds = [], hs_vects = [],
                        hs_valds = error "emptyGroup hs_valds: Can't happen",
                        hs_docs = [] }
@@ -183,6 +187,7 @@ appendGroups
         hs_derivds = derivds1,
         hs_fixds  = fixds1, 
         hs_defds  = defds1,
+        hs_rwlocds= rwlocds1,
         hs_annds  = annds1,
         hs_fords  = fords1, 
         hs_warnds = warnds1,
@@ -196,6 +201,7 @@ appendGroups
         hs_derivds = derivds2,
         hs_fixds  = fixds2, 
         hs_defds  = defds2,
+        hs_rwlocds= rwlocds2,
         hs_annds  = annds2,
         hs_fords  = fords2, 
         hs_warnds = warnds2,
@@ -209,6 +215,7 @@ appendGroups
         hs_instds = instds1 ++ instds2,
         hs_derivds = derivds1 ++ derivds2,
         hs_fixds  = fixds1 ++ fixds2,
+        hs_rwlocds= rwlocds1 ++ rwlocds2,
         hs_annds  = annds1 ++ annds2,
         hs_defds  = defds1 ++ defds2,
         hs_fords  = fords1 ++ fords2, 
@@ -230,6 +237,7 @@ instance OutputableBndr name => Outputable (HsDecl name) where
     ppr (RuleD rd)              = ppr rd
     ppr (VectD vect)            = ppr vect
     ppr (WarningD wd)           = ppr wd
+    ppr (RwLocD rwlocd)         = ppr rwlocd
     ppr (AnnD ad)               = ppr ad
     ppr (SpliceD dd)            = ppr dd
     ppr (DocD doc)              = ppr doc
@@ -242,6 +250,7 @@ instance OutputableBndr name => Outputable (HsGroup name) where
                    hs_derivds = deriv_decls,
                    hs_fixds  = fix_decls,
                    hs_warnds = deprec_decls,
+                   hs_rwlocds= rwloc_decls,
                    hs_annds  = ann_decls,
                    hs_fords  = foreign_decls,
                    hs_defds  = default_decls,
@@ -249,7 +258,7 @@ instance OutputableBndr name => Outputable (HsGroup name) where
                    hs_vects  = vect_decls })
         = vcat_mb empty 
             [ppr_ds fix_decls, ppr_ds default_decls, 
-             ppr_ds deprec_decls, ppr_ds ann_decls,
+             ppr_ds deprec_decls, ppr_ds rwloc_decls, ppr_ds ann_decls,
              ppr_ds rule_decls,
              ppr_ds vect_decls,
              if isEmptyValBinds val_decls 
@@ -1349,6 +1358,22 @@ data WarnDecl name = Warning name WarningTxt
 instance OutputableBndr name => Outputable (WarnDecl name) where
     ppr (Warning thing txt)
       = hsep [text "{-# DEPRECATED", ppr thing, doubleQuotes (ppr txt), text "#-}"]
+\end{code}
+
+%************************************************************************
+%*                                                                      *
+\subsection[RwLocDecl]{Rewrite with location}
+%*                                                                      *
+%************************************************************************
+
+\begin{code}
+type LRwLocDecl name = Located (RwLocDecl name)
+data RwLocDecl name = RewriteLoc name name
+  deriving (Data, Typeable)
+
+instance OutputableBndr name => Outputable (RwLocDecl name) where
+    ppr (RewriteLoc name target)
+      = hsep [text "{-# REWRITE_WITH_LOCATION", ppr name, ppr target, text "#-}"]
 \end{code}
 
 %************************************************************************

@@ -296,6 +296,7 @@ data TcGblEnv
         tcg_imp_specs :: [LTcSpecPrag],     -- ...SPECIALISE prags for imported Ids
         tcg_warns     :: Warnings,          -- ...Warnings and deprecations
         tcg_anns      :: [Annotation],      -- ...Annotations
+        tcg_rwlocs    :: [(Name, Name)],    -- ...Rewrite with location
         tcg_tcs       :: [TyCon],           -- ...TyCons and Classes
         tcg_insts     :: [ClsInst],         -- ...Instances
         tcg_fam_insts :: [FamInst],         -- ...Family instances
