@@ -2085,7 +2085,7 @@ getBackendDefs _ =
 hsSourceCppOpts :: [String]
 -- Default CPP defines in Haskell source
 hsSourceCppOpts =
-        [ "-D__GLASGOW_HASKELL__="++cProjectVersionInt ]
+        [ "-D__GLASGOW_HASKELL__="++cProjectVersionInt, "-D__HAS_REWRITE_WITH_LOCATION__" ]
 
 -- ---------------------------------------------------------------------------
 -- join object files into a single relocatable object file, using ld -r
