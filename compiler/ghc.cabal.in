@@ -351,6 +351,7 @@ Library
         WwLib
         FamInst
         Inst
+        TcRwLocs
         TcAnnotations
         TcArrows
         TcBinds

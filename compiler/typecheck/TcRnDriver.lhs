@@ -38,6 +38,7 @@ import Coercion( pprCoAxiom, pprCoAxBranch )
 import FamInst
 import InstEnv
 import FamInstEnv
+import TcRwLocs
 import TcAnnotations
 import TcBinds
 import HeaderInfo       ( mkPrelImports )
@@ -910,6 +911,7 @@ tcTopSrcDecls boot_details
                    hs_derivds = deriv_decls,
                    hs_fords  = foreign_decls,
                    hs_defds  = default_decls,
+                   hs_rwlocds= rwloc_decls,
                    hs_annds  = annotation_decls,
                    hs_ruleds = rule_decls,
                    hs_vects  = vect_decls,
@@ -954,6 +956,9 @@ tcTopSrcDecls boot_details
                 -- Foreign exports
         traceTc "Tc7" empty ;
         (foe_binds, foe_decls, foe_gres) <- tcForeignExports foreign_decls ;
+
+                -- Rewrite with location
+        tcRwLocs rwloc_decls ;
 
                 -- Annotations
         annotations <- tcAnnotations annotation_decls ;

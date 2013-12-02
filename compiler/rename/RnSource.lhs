@@ -118,7 +118,7 @@ rnSrcDecls extra_deps group@(HsGroup { hs_valds   = val_decls,
    -- Add REWRITE_WITH_LOCATION declarations to environment
    rn_rwloc_decls <- setEnvs (tcg_env, tcl_env) (mapM rnRwLocDecl rwloc_decls);
 
-   setEnvs (tcg_env {tcg_rwlocs = rn_rwloc_decls}, tcl_env) $ do {
+   setEnvs (tcg_env {tcg_rwlocs = map foo rn_rwloc_decls}, tcl_env) $ do {
 
    --  Now everything is in scope, as the remaining renaming assumes.
 
@@ -175,7 +175,7 @@ rnSrcDecls extra_deps group@(HsGroup { hs_valds   = val_decls,
                              hs_warnds  = [], -- warns are returned in the tcg_env
                                              -- (see below) not in the HsGroup
                              hs_fords  = rn_foreign_decls,
-                             hs_rwlocds= [], -- include in the tcg_env, see above
+                             hs_rwlocds= rn_rwloc_decls, -- include in the tcg_env, see above
                              hs_annds  = rn_ann_decls,
                              hs_defds  = rn_default_decls,
                              hs_ruleds = rn_rule_decls,
@@ -338,8 +338,11 @@ dupWarnDecl (L loc _) rdr_name
 %*********************************************************
 
 \begin{code}
-rnRwLocDecl :: LRwLocDecl RdrName -> RnM (Name, Name)
-rnRwLocDecl (L _ (RewriteLoc name target)) = liftM2 (,) (lookupTopBndrRn name) (lookupOccRn target)
+rnRwLocDecl :: LRwLocDecl RdrName -> RnM (LRwLocDecl Name)
+rnRwLocDecl (L loc (RewriteLoc name target)) = L loc <$> (liftM2 RewriteLoc (lookupTopBndrRn name) (lookupOccRn target))
+
+foo :: LRwLocDecl Name -> (Name, Name)
+foo (L _ (RewriteLoc name target)) = (name, target)
 \end{code}
 
 %*********************************************************
