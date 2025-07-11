@@ -32,7 +32,7 @@ module GHC.Utils.Error (
         emptyMessages, mkDecorated, mkLocMessage,
         mkMsgEnvelope, mkPlainMsgEnvelope, mkPlainErrorMsgEnvelope,
         mkErrorMsgEnvelope,
-        mkMCDiagnostic, errorDiagnostic, diagReasonSeverity,
+        mkMCDiagnostic, diagReasonSeverity,
 
         mkPlainError,
         mkPlainDiagnostic,
@@ -46,7 +46,6 @@ module GHC.Utils.Error (
         -- * Issuing messages during compilation
         putMsg, printInfoForUser, printOutputForUser,
         logInfo, logOutput,
-        errorMsg,
         fatalErrorMsg,
         compilationProgressMsg,
         showPass,
@@ -167,11 +166,6 @@ mkMCDiagnostic :: DiagOpts -> DiagnosticReason -> Maybe DiagnosticCode -> Messag
 mkMCDiagnostic opts reason code = MCDiagnostic sev reason' code
   where
     (sev, reason') = diag_reason_severity opts reason
-
--- | Varation of 'mkMCDiagnostic' which can be used when we are /sure/ the
--- input 'DiagnosticReason' /is/ 'ErrorWithoutFlag' and there is no diagnostic code.
-errorDiagnostic :: MessageClass
-errorDiagnostic = MCDiagnostic SevError (ResolvedDiagnosticReason ErrorWithoutFlag) Nothing
 
 --
 -- Creating MsgEnvelope(s)
@@ -318,16 +312,11 @@ sortMsgBag mopts = maybeLimit . sortBy (cmp `on` errMsgSpan) . bagToList
 ghcExit :: Logger -> Int -> IO ()
 ghcExit logger val
   | val == 0  = exitWith ExitSuccess
-  | otherwise = do errorMsg logger (text "\nCompilation had errors\n\n")
+  | otherwise = do fatalErrorMsg logger (text "\nCompilation had errors\n\n")
                    exitWith (ExitFailure val)
 
 -- -----------------------------------------------------------------------------
 -- Outputting messages from the compiler
-
-errorMsg :: Logger -> SDoc -> IO ()
-errorMsg logger msg
-   = logMsg logger errorDiagnostic noSrcSpan $
-     withPprStyle defaultErrStyle msg
 
 fatalErrorMsg :: Logger -> SDoc -> IO ()
 fatalErrorMsg logger msg =
