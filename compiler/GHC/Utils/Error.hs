@@ -22,9 +22,8 @@ module GHC.Utils.Error (
         errorsFound, isEmptyMessages,
 
         -- ** Formatting
-        pprMessageBag, pprMsgEnvelopeBagWithLoc, pprMsgEnvelopeBagWithLocDefault,
-        pprMessages,
-        pprLocMsgEnvelope, pprLocMsgEnvelopeDefault,
+        pprMessageBag, unsafePprMsgEnvelopeBagWithLoc, unsafePprMsgEnvelopeBagWithLocDefault,
+        unsafePprLocMsgEnvelope, unsafePprLocMsgEnvelopeDefault,
         formatBulleted,
 
         -- ** Construction
@@ -32,7 +31,7 @@ module GHC.Utils.Error (
         emptyMessages, mkDecorated, mkLocMessage,
         mkMsgEnvelope, mkPlainMsgEnvelope, mkPlainErrorMsgEnvelope,
         mkErrorMsgEnvelope,
-        mkMCDiagnostic, errorDiagnostic, diagReasonSeverity,
+        unsafeMCDiagnostic, diagReasonSeverity,
 
         mkPlainError,
         mkPlainDiagnostic,
@@ -46,7 +45,6 @@ module GHC.Utils.Error (
         -- * Issuing messages during compilation
         putMsg, printInfoForUser, printOutputForUser,
         logInfo, logOutput,
-        errorMsg,
         fatalErrorMsg,
         compilationProgressMsg,
         showPass,
@@ -163,15 +161,10 @@ diag_reason_severity opts reason = fmap ResolvedDiagnosticReason $ case reason o
 
 -- | Make a 'MessageClass' for a given 'DiagnosticReason', consulting the
 -- 'DiagOpts'.
-mkMCDiagnostic :: DiagOpts -> DiagnosticReason -> Maybe DiagnosticCode -> MessageClass
-mkMCDiagnostic opts reason code = MCDiagnostic sev reason' code
+unsafeMCDiagnostic :: DiagOpts -> DiagnosticReason -> Maybe DiagnosticCode -> MessageClass
+unsafeMCDiagnostic opts reason code = UnsafeMCDiagnostic sev reason' code
   where
     (sev, reason') = diag_reason_severity opts reason
-
--- | Varation of 'mkMCDiagnostic' which can be used when we are /sure/ the
--- input 'DiagnosticReason' /is/ 'ErrorWithoutFlag' and there is no diagnostic code.
-errorDiagnostic :: MessageClass
-errorDiagnostic = MCDiagnostic SevError (ResolvedDiagnosticReason ErrorWithoutFlag) Nothing
 
 --
 -- Creating MsgEnvelope(s)
@@ -273,29 +266,26 @@ formatBulleted (unDecorated -> docs)
     msgs ctx = filter (not . Outputable.isEmpty ctx) docs
     starred = (bullet<+>)
 
-pprMessages :: Diagnostic e => DiagnosticOpts e -> Messages e -> SDoc
-pprMessages e = vcat . pprMsgEnvelopeBagWithLoc e . getMessages
-
-pprMsgEnvelopeBagWithLoc :: Diagnostic e => DiagnosticOpts e -> Bag (MsgEnvelope e) -> [SDoc]
-pprMsgEnvelopeBagWithLoc e bag = [ pprLocMsgEnvelope e item | item <- sortMsgBag Nothing bag ]
+unsafePprMsgEnvelopeBagWithLoc :: Diagnostic e => DiagnosticOpts e -> Bag (MsgEnvelope e) -> [SDoc]
+unsafePprMsgEnvelopeBagWithLoc e bag = [ unsafePprLocMsgEnvelope e item | item <- sortMsgBag Nothing bag ]
 
 -- | Print the messages with the suitable default configuration, usually not what you want but sometimes you don't really
 -- care about what the configuration is (for example, if the message is in a panic).
-pprMsgEnvelopeBagWithLocDefault :: forall e . Diagnostic e => Bag (MsgEnvelope e) -> [SDoc]
-pprMsgEnvelopeBagWithLocDefault bag = [ pprLocMsgEnvelopeDefault item | item <- sortMsgBag Nothing bag ]
+unsafePprMsgEnvelopeBagWithLocDefault :: forall e . Diagnostic e => Bag (MsgEnvelope e) -> [SDoc]
+unsafePprMsgEnvelopeBagWithLocDefault bag = [ unsafePprLocMsgEnvelopeDefault item | item <- sortMsgBag Nothing bag ]
 
-pprLocMsgEnvelopeDefault :: forall e . Diagnostic e => MsgEnvelope e -> SDoc
-pprLocMsgEnvelopeDefault = pprLocMsgEnvelope (defaultDiagnosticOpts @e)
+unsafePprLocMsgEnvelopeDefault :: forall e . Diagnostic e => MsgEnvelope e -> SDoc
+unsafePprLocMsgEnvelopeDefault = unsafePprLocMsgEnvelope (defaultDiagnosticOpts @e)
 
-pprLocMsgEnvelope :: Diagnostic e => DiagnosticOpts e -> MsgEnvelope e -> SDoc
-pprLocMsgEnvelope opts (MsgEnvelope { errMsgSpan      = s
+unsafePprLocMsgEnvelope :: Diagnostic e => DiagnosticOpts e -> MsgEnvelope e -> SDoc
+unsafePprLocMsgEnvelope opts (MsgEnvelope { errMsgSpan      = s
                                , errMsgDiagnostic = e
                                , errMsgSeverity  = sev
                                , errMsgContext   = name_ppr_ctx
                                , errMsgReason    = reason })
   = withErrStyle name_ppr_ctx $
       mkLocMessage
-        (MCDiagnostic sev reason (diagnosticCode e))
+        (UnsafeMCDiagnostic sev reason (diagnosticCode e))
         s
         (formatBulleted $ diagnosticMessage opts e)
 
@@ -318,16 +308,11 @@ sortMsgBag mopts = maybeLimit . sortBy (cmp `on` errMsgSpan) . bagToList
 ghcExit :: Logger -> Int -> IO ()
 ghcExit logger val
   | val == 0  = exitWith ExitSuccess
-  | otherwise = do errorMsg logger (text "\nCompilation had errors\n\n")
+  | otherwise = do fatalErrorMsg logger (text "\nCompilation had errors\n\n")
                    exitWith (ExitFailure val)
 
 -- -----------------------------------------------------------------------------
 -- Outputting messages from the compiler
-
-errorMsg :: Logger -> SDoc -> IO ()
-errorMsg logger msg
-   = logMsg logger errorDiagnostic noSrcSpan $
-     withPprStyle defaultErrStyle msg
 
 fatalErrorMsg :: Logger -> SDoc -> IO ()
 fatalErrorMsg logger msg =
