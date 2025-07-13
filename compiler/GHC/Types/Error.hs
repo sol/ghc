@@ -604,6 +604,9 @@ instance Diagnostic e => ToJson (MsgEnvelope e) where
       opts = defaultDiagnosticOpts @e
       ctx = defaultSDocContext {
           sdocStyle = mkErrStyle (errMsgContext m)
+        , sdocLineLength = maxBound
+             -- preventing line breaks removes variation and as a consequence
+             -- makes it easier to automatically process the generated output
         , sdocCanUseUnicode = True
              -- Using Unicode makes it easier to consume the JSON output,
              -- e.g. a suggestion to use foldl' will be displayed as
